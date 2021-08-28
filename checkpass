@@ -72,13 +72,13 @@ print_string() {
                         NUM=${line##*:}
                         printf "%s%d\n" "Occurences=" $NUM 2>/dev/null
                         echo $PRINTSUM
-                        echo "This password is compromised and dangerous to use."
+                        echo "This password has been compromised and is dangerous to use."
                 fi
         done < input
         if [ -z "$NUM" ]; then
                 echo "Occurences=0"
                 echo $PRINTSUM
-                echo There appear to be no occurences of this password.
+                echo There appear to be no occurences of this password in the database.
         fi
         rm input
         cd "${CWD}"
