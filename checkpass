@@ -1,0 +1,133 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# Description: Checks the occurence of a compromised password on the website
+#              https://haveibeenpawned.com
+#
+# Usage: checkpass [-h|--help] [-r|--readable]
+#
+# Created On: Sat, Aug 14, 2021
+#
+# Copyright 2021, Peter Martin <frogsinspace@gmail.com>
+# All rights reserved.
+# ---------------------------------------------------------------------------
+
+
+PROGNAME=`basename $0`
+VERSION="0.1"
+URL="https://api.pwnedpasswords.com/range/"
+CWD=`pwd`
+
+
+if [[ `echo $(uname -a) | grep Android` ]]
+then
+        TEMP="/data/data/com.termux/files/usr/tmp" #Termux temp folder
+else
+        TEMP="/tmp"
+fi
+
+usage() {
+        echo -e "Usage: $PROGNAME [-h|--help] [-r|--readable]"
+}
+
+help_message() {
+        cat <<- _EOF_
+
+  $PROGNAME ver. $VERSION
+  Anonymously checks a password using the api at haveibeenpwned.com
+  For more information go to https://haveibeenpwned.com/Passwords
+
+  $(usage)
+
+  Options:
+  -h, --help             Display this help message and exit.
+  -r, --readable         Allow the given password to be typed in clear text.
+
+  Note: This script takes no arguments, which upon invocation locally 
+        prompts for a password that is converted into a SHA1 hash. The
+        first five characters of this hash are then anonymously polled
+        against a database of over 613,584,246 compromised password
+        hashes. The script then returns the number of occurences if
+        any for the given hash.
+
+_EOF_
+return
+}
+
+sum() {
+        HASH=$(echo -n "${1}" | openssl dgst -sha1)
+        HASH=${HASH##*= }
+        echo ${HASH^^}
+}
+
+print_string() {
+        PRINTSUM="Shal checksum: $(sum $PASSWORD)"
+        cd $TEMP 
+        curl --silent $URL$SENDSUM >input
+        while IFS= read -r line
+        do
+                #if [[ $line =~ $CHECKSTRING ]]
+                if [ $SENDSUM${line%%:*} == $SUM ]
+                then
+                        #NUM=${line:36}
+                        NUM=${line##*:}
+                        printf "%s%d\n" "Occurences=" $NUM 2>/dev/null
+                        echo $PRINTSUM
+                        echo "This password is compromised and dangerous to use."
+                fi
+        done < input
+        if [ -z "$NUM" ]; then
+                echo "Occurences=0"
+                echo $PRINTSUM
+                echo There appear to be no occurences of this password.
+        fi
+        rm input
+        cd "${CWD}"
+}
+# OPTIONS LOGIC
+if [[ $1 =~ (\-h|\-\-help) ]]
+then
+        help_message
+        exit 0
+elif [[ $1 =~ (\-r|\-\-readable) ]]
+then
+        readable=true
+elif [[ -n $1 ]]
+then
+        usage
+        exit
+fi
+
+unset PASSWORD;
+echo -n "Enter Password to check: "
+if [[ $readable =~ true ]]
+then
+        read PASSWORD
+else
+        while IFS= read -r -s -n1 pass; do
+                if [[ -z $pass ]]; then
+                        echo
+                        break
+                else
+                        echo -n '*'
+                        PASSWORD+=$pass
+                fi
+        done
+fi
+
+SUM=`sum $PASSWORD`
+CHECKSTRING=${SUM:5}
+SENDSUM=${SUM:0:5}
+print_string
+
+# END NOTE
+if [ ${#PASSWORD} -lt 25 ]
+then
+        cat <<- _EOF_
+
+Note: The given password is only ${#PASSWORD} charaters long. Consider
+      using a passphrase of more than 25 characters that has 
+      at least one metacharacter.
+
+_EOF_
+fi
+exit 0
